@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -23,26 +22,49 @@ func NewGin() *gin.Engine {
 	r.POST("/upload/trades-csv", func(c *gin.Context) {
 		file, header, err := c.Request.FormFile("data")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file"})
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"status":  http.StatusUnprocessableEntity,
+				"error":   "Unable to get file from request",
+				"message": nil,
+			})
 			return
 		}
 
 		out, err := os.Create("./tmp/upload~" + header.Filename)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Internal error writing to disk"})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"error":   "Internal error - Unable to provision temporary file for write",
+				"message": nil,
+			})
 			return
 		}
 		defer out.Close()
 
 		_, err = io.Copy(out, file)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Internal error writing to disk"})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"error":   "Internal error - Unable to write to temporary file",
+				"message": nil,
+			})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("Succesfully uploaded csv file to path: %s", "./tmp/upload~"+header.Filename),
-		})
+		isValid, status, msg := VerifyTradesHeaders(header)
+		if !isValid {
+			c.JSON(status, gin.H{
+				"status":  http.StatusOK,
+				"error":   msg,
+				"message": nil,
+			})
+		} else {
+			c.JSON(status, gin.H{
+				"status":  status,
+				"error":   nil,
+				"message": msg,
+			})
+		}
 	})
 
 	return r
