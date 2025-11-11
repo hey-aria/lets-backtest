@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -14,6 +15,11 @@ var assets embed.FS
 func main() {
 	g := NewGin()
 	go g.Run(":8080")
+
+	// Create a tmp folder for any files
+	if _, err := os.Stat("./tmp"); os.IsNotExist(err) {
+		os.Mkdir("./tmp", 0700)
+	}
 
 	// Create an instance of the app structure
 	app := NewApp()
